@@ -9,77 +9,95 @@ datasource db {
 
 model apis {
   asyncapi          String
-  computedAsyncapi  Json      @map(name: "computed_asyncapi")
-  createdAt         DateTime? @default(now()) @map(name: "created_at")
-  creatorId         Int       @map(name: "creator_id")
+  computed_asyncapi Json
+  created_at        DateTime? @default(now())
+  creator_id        Int
   id                Int       @default(autoincrement()) @id
-  projectId         Int       @map(name: "project_id")
+  link_path         String?
+  link_provider     String?
+  link_ref          String?
+  link_repo_id      Int?
+  project_id        Int?
   title             String
   version           String
-  creator           users     @relation(fields: [creatorId], references: [id])
-  project           projects  @relation(fields: [projectId], references: [id])
+  users             users     @relation(fields: [creator_id], references: [id])
+  projects          projects? @relation(fields: [project_id], references: [id])
 }
 
 model invitations {
-  createdAt       DateTime?     @default(now()) @map(name: "created_at")
-  expiresAt       DateTime      @map(name: "expires_at")
+  created_at      DateTime?     @default(now())
+  expires_at      DateTime
   id              Int           @default(autoincrement())
-  inviterId       Int           @map(name: "inviter_id")
-  organizationId  Int           @map(name: "organization_id")
+  inviter_id      Int
+  organization_id Int
   role            String
   scope           String?       @default("one")
   uuid            String        @unique
-  inviter         users         @relation(fields: [inviterId], references: [id])
-  organization    organizations @relation(fields: [organizationId], references: [id])
+  users           users         @relation(fields: [inviter_id], references: [id])
+  organizations   organizations @relation(fields: [organization_id], references: [id])
 }
 
 model organizations {
-  createdAt                   DateTime?             @default(now()) @map(name: "created_at")
-  featureFlags                Json?                 @map(name: "feature_flags")
+  created_at                  DateTime?             @default(now())
+  developer_portal_visibility String?               @default("hidden")
+  feature_flags               Json                  @default(dbgenerated())
   id                          Int                   @default(autoincrement()) @id
   name                        String
-  creatorId                   Int                   @map(name: "creator_id")
+  slug                        String                @unique
   invitations                 invitations[]
-  organizationUsers           organizationsUsers[]
+  organizations_users         organizations_users[]
   projects                    projects[]
-  creator                     users                 @relation(fields: [creatorId], references: [id])
+  repos                       repos[]
 }
 
-model organizationsUsers {
-  createdAt       DateTime?     @default(now()) @map(name: "created_at")
-  organizationId  Int           @map(name: "organization_id")
+model organizations_users {
+  created_at      DateTime?     @default(now())
+  organization_id Int
   role            String        @default("member")
-  userId          Int           @map(name: "user_id")
-  organization    organizations @relation(fields: [organizationId], references: [id])
-  user            users         @relation(fields: [userId], references: [id])
+  user_id         Int
+  organizations   organizations @relation(fields: [organization_id], references: [id])
+  users           users         @relation(fields: [user_id], references: [id])
 
-  @@unique([organizationId, userId], name: "organizations_users_organization_id_user_id")
-  @@map(name: "organizations_users")
+  @@unique([organization_id, user_id], name: "organizations_users_organization_id_user_id")
 }
 
 model projects {
-  createdAt       DateTime?     @default(now()) @map(name: "created_at")
-  creatorId       Int           @map(name: "creator_id")
+  created_at      DateTime?     @default(now())
+  creator_id      Int
   id              Int           @default(autoincrement()) @id
   name            String
-  organizationId  Int           @map(name: "organization_id")
-  creator         users         @relation(fields: [creatorId], references: [id])
-  organization    organizations @relation(fields: [organizationId], references: [id])
+  organization_id Int
+  users           users         @relation(fields: [creator_id], references: [id])
+  organizations   organizations @relation(fields: [organization_id], references: [id])
   apis            apis[]
+}
+
+model repos {
+  created_at      DateTime?     @default(now())
+  hook_id         Int?
+  id              Int           @default(autoincrement()) @id
+  organization_id Int
+  provider        String
+  provider_id     Int
+  title           String
+  url             String        @unique
+  organizations   organizations @relation(fields: [organization_id], references: [id])
 }
 
 model users {
   avatar               String?
   company              String?
-  createdAt            DateTime?             @default(now()) @map(name: "created_at")
-  displayName          String                @map(name: "display_name")
+  created_at           DateTime?             @default(now())
+  display_name         String
   email                String                @unique
-  featureFlags         Json?                 @map(name: "feature_flags")
+  feature_flags        Json                  @default(dbgenerated())
+  github_access_token  String?
+  github_id            String?               @unique
+  github_refresh_token String?
   id                   Int                   @default(autoincrement()) @id
   username             String                @unique
   apis                 apis[]
   invitations          invitations[]
-  organizationsForUser organizationsUsers[]
+  organizations_users  organizations_users[]
   projects             projects[]
-  organizations        organizations[]
 }
