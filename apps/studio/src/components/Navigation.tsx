@@ -5,14 +5,14 @@ import React, { useEffect, useState } from 'react';
 import { useServices } from '../services';
 import { useDocumentsState, useFilesState } from '../state';
 
-import type { OldAsyncAPIDocument as AsyncAPIDocument } from '@asyncapi/parser/cjs';
+import type { AsyncAPIDocumentInterface } from '@asyncapi/parser/cjs';
 
 interface NavigationProps {
   className?: string;
 }
 
 interface NavigationSectionProps {
-  document: AsyncAPIDocument;
+  document: AsyncAPIDocumentInterface;
   rawSpec: string;
   hash: string;
 }
@@ -36,8 +36,9 @@ const ServersNavigation: React.FunctionComponent<NavigationSectionProps> = ({
         Servers
       </div>
       <ul>
-        {Object.entries(document.servers() || {}).map(([serverName, server]) => (
-          <li
+        {document.servers().all().map((server) => {
+          const serverName = server.id();
+          return <li
             key={serverName}
             className={`p-2 pl-3 text-white cursor-pointer text-xs border-t border-gray-700 hover:bg-gray-900 ${
               hash === `server-${serverName}` ? 'bg-gray-800' : ''
@@ -60,7 +61,7 @@ const ServersNavigation: React.FunctionComponent<NavigationSectionProps> = ({
               <span className="truncate">{serverName}</span>
             </div>
           </li>
-        ))}
+        })}
       </ul>
     </>
   );
@@ -72,11 +73,11 @@ const OperationsNavigation: React.FunctionComponent<NavigationSectionProps> = ({
 }) => {
   const { navigationSvc } = useServices();
 
-  const operations = Object.entries(document.channels() || {}).map(
-    ([channelName, channel]) => {
+  const operations = document.operations().all().map(
+    (operation) => {
       const channels: React.ReactNode[] = [];
-
-      if (channel.hasPublish()) {
+      const channelName = operation.channels().all()[0].address() || 'unknown';
+      if (operation.isReceive()) {
         channels.push(
           <li
             key={`${channelName}-publish`}
@@ -101,7 +102,7 @@ const OperationsNavigation: React.FunctionComponent<NavigationSectionProps> = ({
           </li>,
         );
       }
-      if (channel.hasSubscribe()) {
+      if (operation.isSend()) {
         channels.push(
           <li
             key={`${channelName}-subscribe`}
@@ -157,9 +158,10 @@ const MessagesNavigation: React.FunctionComponent<NavigationSectionProps> = ({
 }) => {
   const { navigationSvc } = useServices();
 
-  const messages = Object.keys(document.components()?.messages() || {}).map(
-    messageName => (
-      <li
+  const messages = document.components().messages().all().map(
+    message => {
+      const messageName = message.id();
+      return <li
         key={messageName}
         className={`p-2 pl-6 text-white cursor-pointer text-xs border-t border-gray-700 hover:bg-gray-900 truncate ${
           hash === `message-${messageName}` ? 'bg-gray-800' : ''
@@ -173,7 +175,7 @@ const MessagesNavigation: React.FunctionComponent<NavigationSectionProps> = ({
       >
         {messageName}
       </li>
-    ),
+    },
   );
 
   return (
@@ -202,9 +204,10 @@ const SchemasNavigation: React.FunctionComponent<NavigationSectionProps> = ({
 }) => {
   const { navigationSvc } = useServices();
 
-  const schemas = Object.keys(document.components()?.schemas() || {}).map(
-    schemaName => (
-      <li
+  const schemas = document.components().schemas().all().map(
+    schema => {
+      const schemaName = schema.id();
+      return <li
         key={schemaName}
         className={`p-2 pl-6 text-white cursor-pointer text-xs border-t border-gray-700 hover:bg-gray-900 truncate ${
           hash === `schema-${schemaName}` ? 'bg-gray-800' : ''
@@ -218,7 +221,7 @@ const SchemasNavigation: React.FunctionComponent<NavigationSectionProps> = ({
       >
         {schemaName}
       </li>
-    ),
+    }
   );
 
   return (
@@ -271,7 +274,7 @@ export const Navigation: React.FunctionComponent<NavigationProps> = ({
     );
   }
 
-  const components = document.hasComponents() && document.components();
+  const components = document.components();
   return (
     <div className={`flex flex-none flex-col overflow-y-auto overflow-x-hidden bg-gray-800 h-full ${className}`}>
       <ul>
@@ -290,7 +293,7 @@ export const Navigation: React.FunctionComponent<NavigationProps> = ({
             Information
           </div>
         </li>
-        {document.hasServers() && (
+        {!document.servers().isEmpty() && (
           <li className="mb-4">
             <ServersNavigation
               document={document}
@@ -306,7 +309,7 @@ export const Navigation: React.FunctionComponent<NavigationProps> = ({
             hash={hash}
           />
         </li>
-        {components && components.hasMessages() && (
+        {!components.messages().isEmpty() && (
           <li className="mb-4">
             <MessagesNavigation
               document={document}
@@ -315,7 +318,7 @@ export const Navigation: React.FunctionComponent<NavigationProps> = ({
             />
           </li>
         )}
-        {components && components.hasSchemas() && (
+        {!components.schemas().isEmpty() && (
           <li className="mb-4">
             <SchemasNavigation
               document={document}
